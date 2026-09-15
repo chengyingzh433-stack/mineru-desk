@@ -1,0 +1,2 @@
+const {contextBridge,ipcRenderer,webUtils}=require('electron');
+contextBridge.exposeInMainWorld('desk',{pickFiles:()=>ipcRenderer.invoke('pick-files'),pickDirectory:()=>ipcRenderer.invoke('pick-directory'),pickExecutable:()=>ipcRenderer.invoke('pick-executable'),openPath:p=>ipcRenderer.invoke('open-path',p),external:url=>ipcRenderer.invoke('external',url),filePath:file=>webUtils.getPathForFile(file)});
