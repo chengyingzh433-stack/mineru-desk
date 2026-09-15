@@ -1,0 +1,32 @@
+{
+  "appId":"local.mineru.desk",
+  "productName":"MinerU Desk",
+  "asar":false,
+  "files":["desktop.cjs","preload.cjs","server.mjs","core.mjs","portable.cjs","agent.mjs","storage.mjs","task-maintenance.mjs","bundled-models.mjs","progress.mjs","hardware.mjs","cli.mjs","web/**","package.json","使用说明.md"],
+  "directories": {"output":"release-installer","buildResources":"packaging"},
+  "extraFiles": [
+    {"from":".build/runtime-bundle/runtime","to":"runtime","filter":["**/*","!**/__pycache__/**","!**/*.pyc"]},
+    {"from":".build/runtime-bundle/examples","to":"examples"},
+    {"from":".build/runtime-bundle/licenses","to":"licenses"},
+    {"from":".build/runtime-bundle/dependency-inventory.json","to":"dependency-inventory.json"},
+    {"from":"packaging/Codex.ps1","to":"Codex.ps1"},
+    {"from":"packaging/安装使用说明.md","to":"开始使用.md"},
+    {"from":"packaging/安装版Codex接入.md","to":"给Codex的接入说明.md"},
+    {"from":"packaging/第三方组件说明.md","to":"第三方组件说明.md"},
+    {"from":"packaging/installer-marker.json","to":"mineru-desk-bundle.json"}
+  ],
+  "win":{"target":"nsis"},
+  "nsis":{
+    "oneClick":false,
+    "allowToChangeInstallationDirectory":true,
+    "perMachine":false,
+    "allowElevation":false,
+    "runAfterFinish":false,
+    "deleteAppDataOnUninstall":false,
+    "installerLanguages":["zh_CN","en_US"],
+    "language":"2052",
+    "createDesktopShortcut":true,
+    "include":"packaging/installer.nsh",
+    "artifactName":"MinerU-Desk-Setup-${version}-${arch}.exe"
+  }
+}

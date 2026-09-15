@@ -1,0 +1,16 @@
+def load_model(path):
+    """Load a model given a filepath and return a model object."""
+    # MinerU Desk compatibility patch: Windows C++ narrow-path loading cannot
+    # open some Unicode paths. A scoped ASCII relative copy avoids changing cwd.
+    import os
+    import shutil
+    import tempfile
+    try:
+        return _FastText(model_path=path)
+    except ValueError:
+        if os.name != 'nt' or str(path).isascii() or not os.path.isfile(path):
+            raise
+        with tempfile.TemporaryDirectory(prefix='.mineru-fasttext-', dir=os.getcwd()) as temp:
+            copy = os.path.join(temp, 'model.bin')
+            shutil.copyfile(path, copy)
+            return _FastText(model_path=os.path.relpath(copy, os.getcwd()))
