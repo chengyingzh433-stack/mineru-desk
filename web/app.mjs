@@ -1,15 +1,18 @@
 import {marked} from '/vendor/marked/lib/marked.esm.js';
 import {storageHTML,progressHTML} from './storage-view.mjs';
 import {hardwareHTML} from './hardware-view.mjs';
+import {mountMaintenance,maintenanceAction} from './maintenance-view.mjs';
 const token=new URLSearchParams(location.hash.slice(1)).get('token')||sessionStorage.getItem('desk-token');
 if(token)sessionStorage.setItem('desk-token',token);history.replaceState(null,'',location.pathname);
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=name=>`<i data-lucide="${name}"></i>`;
-const icons=()=>{window.lucide?.createIcons();const footer=$('#options .start-block');if(footer){$('.settings-panel > .start-block')?.remove();$('.settings-panel').append(footer);}for(const input of $$('[data-format]')){if(options.provider!=='cloud'){input.checked=true;input.disabled=true;}else if(options.cloudMode==='crawl'&&['latex','docx'].includes(input.dataset.format)){input.checked=false;input.closest('label').hidden=true;}}renderProgress();};
+const icons=()=>{mountMaintenance({page,provider:options.provider});window.lucide?.createIcons();const footer=$('#options .start-block');if(footer){$('.settings-panel > .start-block')?.remove();$('.settings-panel').append(footer);}for(const input of $$('[data-format]')){if(options.provider!=='cloud'){input.checked=true;input.disabled=true;}else if(options.cloudMode==='crawl'&&['latex','docx'].includes(input.dataset.format)){input.checked=false;input.closest('label').hidden=true;}}renderProgress();};
 let storageData=null,hardware=null;
 function renderProgress(){for(const row of $$('.task-row')){const id=row.querySelector('[data-id]')?.dataset.id;const t=state.tasks.find(t=>t.id===id);row.querySelector('.job-progress')?.remove();if(t?.status==='running')row.querySelector('.file-info').insertAdjacentHTML('beforeend',progressHTML(t.progress,t.status));}if($('#model-log')){let slot=$('#model-progress');if(!slot){slot=document.createElement('div');slot.id='model-progress';$('#model-log').before(slot);}const job=state.modelsJob;slot.innerHTML=job?progressHTML(job.progress,job.status)+`<p class="hint">${escape(labels[job.status]||job.status)}${job.root?' · '+escape(job.root):''}</p>`:'';}}
 let state={tasks:[],settings:{}},page='work',files=[],environment=null,filter='all',selected=null,edit=null,dirty=false,viewMode='preview',models=[];
+let settingsDirty=false;
+window.__mineruUnsaved=()=>dirty||settingsDirty||!!$('#cloud-token')?.value;
 const historySelection=new Set();
 const names={work:'转换工作台',history:'任务记录',models:'模型与服务',hardware:'配置与建议',storage:'存储与清理',settings:'应用设置',agent:'Agent 接入',result:'结果对照'};
 const labels={queued:'等待中',running:'转换中',completed:'已完成',reused:'已复用',failed:'失败',canceled:'已取消',interrupted:'待继续'};
@@ -41,7 +44,8 @@ node cli.mjs content &lt;任务 ID&gt;
 node cli.mjs resume</pre><p>request.json 示例：</p><pre class="code-block">${escape(JSON.stringify({files:['D:/文献/论文.pdf'],outputRoot:state.settings.outputRoot,options:{provider:'local',backend:'pipeline',method:'auto',formats:['md','json']}},null,2))}</pre><p class="hint">本地接口仅监听 127.0.0.1。连接信息由 CLI 自动读取，记录位置：${escape(state.dataRoot)}</p></section></div>`;}
 function serviceToolsHTML(){return `<div class="section-heading"><h2>服务工具</h2><span class="hint">启动、停止或查看服务日志</span></div><section class="panel panel-body">${select('服务类型','service-type',[['api','MinerU API · 程序接口'],['gradio','Gradio · 官方 WebUI'],['openai-server','OpenAI 兼容推理服务'],['router','Router · 多服务 / GPU 调度']],'api')}<div class="settings-grid">${field('监听端口','service-port','8000','number')}<div class="form-field"><label class="field-label">附加启动参数（JSON 数组）</label><textarea class="control" id="service-extra">[]</textarea></div></div><div class="service-actions">${button(icon('play')+'启动服务','service-start','soft')}${button('停止所选服务','service-stop')}${button('查看服务日志','service-log')}${button('打开所选服务','service-open')}${button('安装独立本地环境','install-local')}</div><p class="hint">默认只监听本机。推理服务需要对应的模型、硬件和推理框架；附加参数可配置上游地址、GPU 等官方选项。</p><p id="service-status" class="status-line"></p></section>`;}
 async function navigate(next){
- if(dirty&&!await confirmDialog('编辑尚未保存','离开此页将丢弃未保存的文字。','离开'))return;
+ if(window.__mineruUnsaved()&&!await confirmDialog('修改尚未保存','离开此页将丢弃尚未保存的文字、设置或 Token。','离开'))return;
+ settingsDirty=false;
  page=next;if(next==='work'&&filter==='archived')filter='all';dirty=false;$('#crumb').textContent=names[next]||next;$$('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===next));
  if(next==='models'){const result=await api('models');if(page!==next)return;models=result.models;}
  if(next==='storage'){const snapshot=await api('storage');if(page!==next)return;storageData=snapshot;$('#main').innerHTML=storageHTML(storageData,state.settings);}
@@ -64,7 +68,7 @@ async function pickDirectory(){return window.desk?window.desk.pickDirectory():in
 async function addFiles(list){files=[...new Set([...files,...list])];if(page!=='work')await navigate('work');renderStaging();}
 async function openPath(p){if(!p)return toast('还没有可打开的目录');if(window.desk){const error=await window.desk.openPath(p);if(error)toast(error);}else toast(p);}
 async function external(url){if(window.desk)await window.desk.external(url);else window.open(url,'_blank');}
-async function saveSettings(){const s={};for(const key of ['outputRoot','modelRoot','modelSource','mineru','cloudCli','serverUrl','vlmUrl'])if($('#set-'+key))s[key]=$('#set-'+key).value;if($('#set-offline'))s.offline=$('#set-offline').checked;state.settings=await api('settings',s);toast('设置已保存');}
+async function saveSettings(){const s={};for(const key of ['outputRoot','modelRoot','modelSource','mineru','cloudCli','serverUrl','vlmUrl'])if($('#set-'+key))s[key]=$('#set-'+key).value;if($('#set-offline'))s.offline=$('#set-offline').checked;state.settings=await api('settings',s);settingsDirty=false;toast('设置已保存');}
 const fileURL=(id,p,source=false)=>`/api/tasks/${id}/${source?'source':'file'}?token=${encodeURIComponent(token)}${source?'':'&path='+encodeURIComponent(p)}`;
 function renderMarkdown(text,t){let html=window.DOMPurify.sanitize(marked.parse(text),{ADD_TAGS:['math','annotation','semantics'],FORBID_TAGS:['script','style','iframe','object','embed','form']});const temp=document.createElement('div');temp.innerHTML=html;const relative=edit.markdown&&t.outputDir?edit.markdown.slice(t.outputDir.length+1).replaceAll('\\','/'):'';const base=relative.includes('/')?relative.slice(0,relative.lastIndexOf('/')+1):'';temp.querySelectorAll('img').forEach(img=>{const src=img.getAttribute('src')||'';if(src.startsWith('data:image/'))return;if(/^https?:/i.test(src)){img.replaceWith(document.createTextNode('[远程图片：'+src+']'));return;}img.src=fileURL(t.id,base+src);});temp.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noreferrer';});return temp.innerHTML;}
 function resultHTML(t){const ext=t.source.split('.').pop().toLowerCase();const local=!/^https?:/.test(t.source);const original=local&&ext==='pdf'?`<iframe title="原文 PDF" src="${fileURL(t.id,'',true)}"></iframe>`:local&&['png','jpg','jpeg','webp','gif','bmp'].includes(ext)?`<img class="source-image" src="${fileURL(t.id,'',true)}">`:`<div class="empty">${icon('file-text')}<b>${escape(t.name)}</b><p>这类文件需要用电脑上的其他软件打开。</p>${button('打开原文','open-source')}</div>`;return `<div class="result-header">${button(icon('arrow-left'),'back')}<h1 title="${escape(t.name)}">${escape(t.name)}</h1><span class="badge completed">${edit.edited?'已编辑':'转换原稿'}</span>${button('重新转换','force-retry')}${button(icon('folder-open')+'结果目录','open-result')}${button(icon('save')+'保存编辑','save-edit','primary')}</div><div class="result-grid"><section class="panel result-pane"><div class="panel-title"><h2>原始文档</h2><span>原件保持不变</span></div>${original}</section><section class="panel result-pane"><div class="panel-title"><div class="toolbar">${[['preview','预览'],['edit','编辑'],['files','文件']].map(([id,name])=>`<button class="button small ${viewMode===id?'soft':''}" data-view="${id}">${name}</button>`).join('')}</div><button class="text-link" data-action="restore">恢复初始版本</button></div><div id="result-content" style="display:flex;flex-direction:column;flex:1;min-height:0"></div><div class="result-status" id="edit-status">${edit.edited?'已保存的编辑版本':'原始转换结果'} · 修改后点击保存</div></section></div>`;}
@@ -89,6 +93,7 @@ async function cleanHistory(){
 document.addEventListener('change',event=>{const id=event.target.dataset.historyId;if(id){if(event.target.checked)historySelection.add(id);else historySelection.delete(id);selectionControls();}});
 
 document.addEventListener('click',async event=>{const target=event.target.closest('button');if(!target)return;try{
+ if(target.dataset.maintenance)return await maintenanceAction(target.dataset.maintenance);
  if(target.dataset.nav)return await navigate(target.dataset.nav);
  if(target.dataset.filter){filter=target.dataset.filter;$$('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));return refresh();}
  if(target.dataset.provider){collectOptions();options.provider=target.dataset.provider;if(options.provider==='local'&&options.backend.endsWith('http-client'))options.backend='pipeline';options.formats=options.provider==='cloud'&&options.cloudMode==='flash-extract'?['md']:['md','json'];$('#options').innerHTML=optionsHTML();icons();return;}
@@ -133,6 +138,7 @@ document.addEventListener('click',async event=>{const target=event.target.closes
  if(action==='save-token'){await api('token',{token:$('#cloud-token').value});$('#cloud-token').value='';await refresh();toast('Token 已加密保存');}
  if(action==='clear-token'){await api('token',{clear:true});toast('已清除应用保存的 Token');}
  if(action==='get-token')await external('https://mineru.net/apiManage/token');
+ if(action==='release-page')await external('https://github.com/chengyingzh433-stack/mineru-desk/releases');
  if(action==='test-server'){await saveSettings();const result=await api('server/test',{});$('#server-test').textContent='连接成功 · '+JSON.stringify(result);}
  if(action==='go-settings')await navigate('settings');
  if(action==='refresh-models'){environment=await api('environment');await navigate('models');}
@@ -160,6 +166,8 @@ document.addEventListener('click',async event=>{const target=event.target.closes
 document.addEventListener('input',e=>{if(e.target.id==='markdown-editor'){dirty=true;edit.text=e.target.value;$('#edit-status').textContent='有未保存的修改';}if(e.target.id==='task-search'){$('#task-list').innerHTML=taskRows(filtered());selectionControls();}});
 document.addEventListener('change',e=>{if(['opt-cloudMode','opt-backend','opt-effort'].includes(e.target.id)){try{collectOptions();if(options.cloudMode==='flash-extract'&&options.provider==='cloud')options.formats=['md'];$('#options').innerHTML=optionsHTML();icons();}catch(err){toast(err.message);}}});
 document.addEventListener('dragover',e=>{e.preventDefault();$('#dropzone')?.classList.add('drag');});document.addEventListener('dragleave',e=>{if(e.target.id==='dropzone')e.target.classList.remove('drag');});document.addEventListener('drop',async e=>{e.preventDefault();$('#dropzone')?.classList.remove('drag');if(!window.desk)return toast('请在桌面应用中拖入文件');try{const paths=[...e.dataTransfer.files].map(f=>window.desk.filePath(f)).filter(Boolean);await addFiles(paths);}catch(err){toast(err.message);}});
-window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='有未保存的修改';}});
+document.addEventListener('input',e=>{if(e.target.id?.startsWith('set-'))settingsDirty=true;});
+document.addEventListener('change',e=>{if(e.target.id?.startsWith('set-'))settingsDirty=true;});
+window.addEventListener('beforeunload',e=>{if(window.__mineruUnsaved()){e.preventDefault();e.returnValue='有未保存的修改';}});
 window.__errors=[];window.addEventListener('error',e=>window.__errors.push(e.message));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));
 try{await refresh();await navigate('work');api('environment').then(value=>environment=value).catch(e=>console.error(e));setInterval(()=>refresh().catch(()=>{$('.connection').textContent='任务服务连接中断';}),2000);}catch(e){$('#main').innerHTML=heading('无法连接任务服务',escape(e.message));}
