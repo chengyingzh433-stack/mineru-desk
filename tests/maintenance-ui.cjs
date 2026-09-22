@@ -1,0 +1,48 @@
+// UI regression with an isolated task service and synthetic update metadata.
+// No installers are executed and no user documents or tokens are used.
+const {app,BrowserWindow,ipcMain}=require('electron');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
+const {spawn}=require('node:child_process');
+const root=path.resolve(__dirname,'..');const data=fs.mkdtempSync(path.join(os.tmpdir(),'mineru-maintenance-ui-'));
+let server,win,lastFrame,externalUrl,installedCalls=0,uninstallCalls=0,update={status:'idle',message:'点击检查更新'};
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(fn){for(let i=0;i<150;i++){if(await fn())return;await pause(100);}throw Error('UI wait timed out');}
+ipcMain.handle('system-info',()=>({version:'0.3.2',installed:true,update}));
+ipcMain.handle('update-check',()=>{update={status:'available',message:'可更新到 0.3.3',release:{version:'0.3.3',available:true,bytes:600000000}};return update;});
+ipcMain.handle('update-download',()=>{update={...update,status:'ready',message:'SHA-256 校验通过'};return update;});
+ipcMain.handle('update-install',()=>{installedCalls++;return {canceled:true};});
+ipcMain.handle('system-uninstall',()=>{uninstallCalls++;return {canceled:true};});
+ipcMain.handle('external',(_e,url)=>externalUrl=url);
+app.disableHardwareAcceleration();
+app.whenReady().then(async()=>{
+ server=spawn(process.execPath,[path.join(root,'server.mjs')],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',MINERU_DESK_DATA:data},windowsHide:true,stdio:'ignore'});
+ await until(()=>fs.existsSync(path.join(data,'connection.json')));const c=JSON.parse(fs.readFileSync(path.join(data,'connection.json')));
+ win=new BrowserWindow({show:false,width:1440,height:930,webPreferences:{offscreen:true,preload:path.join(root,'preload.cjs'),contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+ win.webContents.on('paint',(_e,_rect,frame)=>lastFrame=frame);
+ await win.loadURL(`http://127.0.0.1:${c.port}/#token=${c.token}`);
+ const js=text=>win.webContents.executeJavaScript(text);
+ await until(()=>js(`!!document.querySelector('[data-provider="cloud"]')`));
+ await js(`document.querySelector('[data-provider="cloud"]').click()`);
+ await until(()=>js(`!!document.querySelector('#cloud-token-shortcut')`));
+ await js(`document.querySelector('#cloud-token-shortcut [data-action="get-token"]').click()`);
+ await until(()=>externalUrl);assert.equal(externalUrl,'https://mineru.net/apiManage/token');
+ await js(`document.querySelector('[data-nav="settings"]').click()`);
+ await until(()=>js(`!!document.querySelector('[data-maintenance="check"]')`));
+ await js(`document.querySelector('[data-maintenance="check"]').click()`);
+ await until(()=>js(`document.querySelector('#app-maintenance').textContent.includes('0.3.3')`));
+ assert.equal(await js(`!!document.querySelector('[data-maintenance="download"]')`),true);
+ assert.equal(await js(`!!document.querySelector('[data-maintenance="install"]')`),false);
+ await js(`document.querySelector('[data-maintenance="download"]').click()`);
+ await until(()=>js(`!!document.querySelector('[data-maintenance="install"]')`));
+ await js(`const field=document.querySelector('#cloud-token');field.value='synthetic-unsaved';field.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[data-maintenance="install"]').click()`);
+ await pause(200);assert.equal(installedCalls,0);
+ await js(`document.querySelector('#cloud-token').value='';document.querySelector('[data-maintenance="install"]').click()`);
+ await until(()=>installedCalls===1);
+ await js(`document.querySelector('[data-maintenance="uninstall"]').click()`);await until(()=>uninstallCalls===1);
+ fs.mkdirSync(path.join(root,'test-output'),{recursive:true});
+ await js(`document.querySelector('#app-maintenance').scrollIntoView()`);await pause(400);
+ await until(()=>lastFrame);fs.writeFileSync(path.join(root,'test-output/maintenance-ui.png'),lastFrame.toPNG());
+ assert.deepEqual(await js('window.__errors'),[]);
+ console.log('PASS: cloud Token shortcut; check -> available -> download -> install; unsaved Token blocks install; uninstall entry; real preload bridge');
+ server.kill();win.destroy();app.quit();
+}).catch(e=>{console.error(e);server?.kill();win?.destroy();app.exit(1);});
