@@ -34,7 +34,7 @@ if(bundleRoot&&state.bundleRoot&&state.bundleRoot!==bundleRoot){
 if(bundleRoot){state.bundleRoot=bundleRoot;writeJson(statePath,state);}
 for(const t of state.tasks) if(['running','queued'].includes(t.status))t.status='interrupted';
 const active=new Map();const probes=new Map();
-let loopBusy=false;let modelsJob=state.lastModelsJob||null;let modelProcess=null;const services=new Map();
+let loopBusy=false,shuttingDown=false;let modelsJob=state.lastModelsJob||null;let modelProcess=null;const services=new Map();
 if(modelsJob?.status==='running')modelsJob.status='interrupted';
 const save=()=>writeJson(statePath,state);
 const busy=()=>!!(loopBusy||active.size||modelsJob?.status==='running'||[...services.values()].some(s=>s.status==='running'));
@@ -107,7 +107,8 @@ async function api(req,res,url){
   let body={};if(method==='POST'){let raw='';for await(const c of req){raw+=c;if(raw.length>15*1024*1024)throw Error('请求过大');}body=JSON.parse(raw||'{}');}
   const route=parts.slice(1).join('/');
   if(method==='GET'&&route==='identity')return {name:'mineru-desk',version:readJson(path.join(appRoot,'package.json'),{}).version,appRoot,dataRoot,bundleRoot,workspaceRoot,installed,pid:process.pid};
-  if(method==='POST'&&route==='shutdown'){if(busy()||state.tasks.some(t=>t.status==='queued'))throw Error('还有任务或服务未停止，请先处理后再关闭。');save();setTimeout(()=>server.close(()=>process.exit(0)),100);return {ok:true};}
+  if(method==='POST'&&shuttingDown)throw Error('程序正在退出，暂不接受新操作');
+  if(method==='POST'&&route==='shutdown'){if(busy()||state.tasks.some(t=>t.status==='queued'))throw Error('还有任务或服务未停止，请先处理后再关闭。');shuttingDown=true;save();setTimeout(()=>{server.close(()=>process.exit(0));server.closeIdleConnections();},100);return {ok:true};}
   if(method==='GET'&&route==='state')return {...state,settings:settingsPublic(),modelsJob,dataRoot,workspaceRoot,installed};
   if(method==='POST'&&route==='history/archive')return maintenance.archive(body);
   if(method==='POST'&&route==='history/preview')return maintenance.preview(body);

@@ -1,2 +1,3 @@
 const {contextBridge,ipcRenderer,webUtils}=require('electron');
+contextBridge.exposeInMainWorld('deskSystem',{info:()=>ipcRenderer.invoke('system-info'),check:()=>ipcRenderer.invoke('update-check'),download:()=>ipcRenderer.invoke('update-download'),cancel:()=>ipcRenderer.invoke('update-cancel'),install:()=>ipcRenderer.invoke('update-install'),uninstall:()=>ipcRenderer.invoke('system-uninstall')});
 contextBridge.exposeInMainWorld('desk',{pickFiles:()=>ipcRenderer.invoke('pick-files'),pickDirectory:()=>ipcRenderer.invoke('pick-directory'),pickExecutable:()=>ipcRenderer.invoke('pick-executable'),openPath:p=>ipcRenderer.invoke('open-path',p),external:url=>ipcRenderer.invoke('external',url),filePath:file=>webUtils.getPathForFile(file)});

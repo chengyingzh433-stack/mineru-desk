@@ -1,5 +1,7 @@
 # MinerU Desk
 
+<img src="web/app-icon.svg" width="80" alt="笔和信纸图标">
+
 把论文拖进窗口，选好保存位置，转换后对照原 PDF 阅读和修改 Markdown。
 
 MinerU Desk 是基于 [OpenDataLab MinerU](https://github.com/opendatalab/MinerU) 的 Windows 桌面客户端，属于个人维护的非官方项目，与 OpenDataLab 无隶属或背书关系。文档解析、OCR、版面分析等核心能力来自 MinerU 及其依赖；本项目负责桌面界面、任务队列、模型与存储管理，以及供 Codex 调用的本地任务接口。云端接入使用 [MinerU Ecosystem](https://github.com/opendatalab/MinerU-Ecosystem) 的 `mineru-open-api`。
@@ -18,9 +20,9 @@ MinerU Desk 是基于 [OpenDataLab MinerU](https://github.com/opendatalab/MinerU
 
 ## 安装与第一次转换
 
-在 [Releases](https://github.com/chengyingzh433-stack/mineru-desk/releases) 下载 `MinerU-Desk-Setup-0.3.1-x64.exe`，双击安装并选择路径。适用于 Windows 10 2004 及以上的 x64 系统和 Windows 11。
+在 [Releases](https://github.com/chengyingzh433-stack/mineru-desk/releases) 下载 `MinerU-Desk-Setup-0.3.2-x64.exe`，双击安装并选择路径。适用于 Windows 10 2004 及以上的 x64 系统和 Windows 11。
 
-0.3.1 安装包约 584 MiB，包含桌面程序、MinerU 3.4.5、Python 3.12.10 和 PyTorch 2.8.0 CPU 依赖。**不含 Pipeline/VLM 大模型**，首次本地转换 PDF 前需要下载或导入模型。安装程序未做代码签名，请核对发布来源和校验值，不要为安装而关闭系统安全防护。
+安装包包含桌面程序、MinerU 3.4.5、Python 3.12.10 和 PyTorch 2.8.0 CPU 依赖，大小见发布页。**不含 Pipeline/VLM 大模型**，首次本地转换 PDF 前需要下载或导入模型。安装程序未做代码签名，请核对发布来源和校验值，不要为安装而关闭系统安全防护。
 
 1. 打开 MinerU Desk，在“存储与清理”中选好模型、缓存和结果目录。
 2. 进入“模型与服务”，下载 Pipeline 模型，或关联已有完整模型目录。
@@ -28,6 +30,16 @@ MinerU Desk 是基于 [OpenDataLab MinerU](https://github.com/opendatalab/MinerU
 4. 点击“开始转换”。完成后打开结果，对照原文检查公式、表格和关键文字。
 
 如用官方云端，在界面填写自己的 Token 后提交。云端会接收文档；涉及未公开论文、学生信息等材料时，请先确认是否允许上传。模型准备完成后，本地模式可离线运行。
+
+选择“官方云端”后，可点击“获取官方 Token ↗”打开 [官方申请页](https://mineru.net/apiManage/token)。创建 Token 后，在“应用设置 / 更新 → 官方云端”粘贴并保存。
+
+### 更新与卸载
+
+打开“应用设置 / 更新”，在“版本与维护”里点击“检查更新”。有新版本时会显示版本号和安装包大小，由你决定是否下载；下载完成并通过 SHA-256 校验后，点击“安装更新并重启”。更新使用原安装路径，保留外部模型、原文、结果、设置和任务记录。
+
+0.3.1 没有应用内更新入口，首次升级需下载新版安装包，关闭旧客户端和空闲后台后覆盖安装一次，无需先卸载。之后可在客户端内检查和安装更新。网络无法连接 GitHub 时，也可以手动下载新版覆盖安装。
+
+“卸载 MinerU 与桌面程序…”会打开卸载确认窗口，移除本客户端及随包 MinerU、Python 和 CPU 依赖。外部工作区默认保留，你单独安装的其他 MinerU 环境也不受影响。开始菜单和 Windows“已安装的应用”同样可以卸载。请先结束转换、下载与服务，并保存编辑；安装器不会强行结束这些工作。
 
 ### 文件存在哪里
 
