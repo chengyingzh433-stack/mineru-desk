@@ -4,7 +4,7 @@ const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
 const root=path.resolve(__dirname,'..');const data=fs.mkdtempSync(path.join(os.tmpdir(),'mineru-maintenance-ui-'));
-let server,win,lastFrame,externalUrl,installedCalls=0,uninstallCalls=0,update={status:'idle',message:'点击检查更新'};
+let server,win,lastFrame,externalUrl,installedCalls=0,uninstallCalls=0,configureCalls=0,update={status:'idle',message:'点击检查更新'};
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let i=0;i<150;i++){if(await fn())return;await pause(100);}throw Error('UI wait timed out');}
 ipcMain.handle('system-info',()=>({version:'0.3.2',installed:true,update}));
@@ -12,6 +12,7 @@ ipcMain.handle('update-check',()=>{update={status:'available',message:'可更新
 ipcMain.handle('update-download',()=>{update={...update,status:'ready',message:'SHA-256 校验通过'};return update;});
 ipcMain.handle('update-install',()=>{installedCalls++;return {canceled:true};});
 ipcMain.handle('system-uninstall',()=>{uninstallCalls++;return {canceled:true};});
+ipcMain.handle('window-configure',()=>{configureCalls++;return true;});
 ipcMain.handle('external',(_e,url)=>externalUrl=url);
 app.disableHardwareAcceleration();
 app.whenReady().then(async()=>{
@@ -28,6 +29,7 @@ app.whenReady().then(async()=>{
  await until(()=>externalUrl);assert.equal(externalUrl,'https://mineru.net/apiManage/token');
  await js(`document.querySelector('[data-nav="settings"]').click()`);
  await until(()=>js(`!!document.querySelector('[data-maintenance="check"]')`));
+ await js(`document.querySelector('[data-maintenance="configure"]').click()`);await until(()=>configureCalls===1);
  await js(`document.querySelector('[data-maintenance="check"]').click()`);
  await until(()=>js(`document.querySelector('#app-maintenance').textContent.includes('0.3.3')`));
  assert.equal(await js(`!!document.querySelector('[data-maintenance="download"]')`),true);
