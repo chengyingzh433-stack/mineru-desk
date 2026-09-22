@@ -20,7 +20,7 @@ MinerU Desk 是基于 [OpenDataLab MinerU](https://github.com/opendatalab/MinerU
 
 ## 安装与第一次转换
 
-在 [Releases](https://github.com/chengyingzh433-stack/mineru-desk/releases) 下载 `MinerU-Desk-Setup-0.3.2-x64.exe`，双击安装并选择路径。适用于 Windows 10 2004 及以上的 x64 系统和 Windows 11。
+在 [Releases](https://github.com/chengyingzh433-stack/mineru-desk/releases) 下载 `MinerU-Desk-Setup-0.3.3-x64.exe`，双击安装并选择路径。适用于 Windows 10 2004 及以上的 x64 系统和 Windows 11。
 
 安装包包含桌面程序、MinerU 3.4.5、Python 3.12.10 和 PyTorch 2.8.0 CPU 依赖，大小见发布页。**不含 Pipeline/VLM 大模型**，首次本地转换 PDF 前需要下载或导入模型。安装程序未做代码签名，请核对发布来源和校验值，不要为安装而关闭系统安全防护。
 
@@ -32,6 +32,12 @@ MinerU Desk 是基于 [OpenDataLab MinerU](https://github.com/opendatalab/MinerU
 如用官方云端，在界面填写自己的 Token 后提交。云端会接收文档；涉及未公开论文、学生信息等材料时，请先确认是否允许上传。模型准备完成后，本地模式可离线运行。
 
 选择“官方云端”后，可点击“获取官方 Token ↗”打开 [官方申请页](https://mineru.net/apiManage/token)。创建 Token 后，在“应用设置 / 更新 → 官方云端”粘贴并保存。
+
+### 关闭窗口与托盘
+
+点击右上角 ×，可选择“最小化到托盘”“退出程序”或“取消”，也可以勾选记住选择。最小化会保留未保存内容，转换和下载继续运行。点击右下角的笔和信纸图标可恢复窗口；若没看到图标，展开“^”隐藏图标区域。右键菜单可以退出。
+
+“应用设置 / 更新 → 窗口与托盘”可修改关闭行为，以及最小化按钮是收起到托盘还是任务栏。退出前会检查未保存内容和运行中的任务；有任务时先完成或取消任务，空闲时退出会停止本应用后台。此设置不包含开机自启动。
 
 ### 更新与卸载
 

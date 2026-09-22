@@ -1,6 +1,6 @@
 {
   "name": "mineru-desk",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "A local-first MinerU desktop workbench with shared agent task history",
   "main": "desktop.cjs",
@@ -26,7 +26,7 @@
     "appId": "local.mineru.desk",
     "productName": "MinerU Desk",
     "asar": false,
-    "files": ["desktop.cjs", "updater.cjs", "packaging/maintenance-runner.ps1", "preload.cjs", "server.mjs", "core.mjs", "portable.cjs", "agent.mjs", "storage.mjs", "task-maintenance.mjs", "bundled-models.mjs", "progress.mjs", "hardware.mjs", "cli.mjs", "web/**", "package.json", "使用说明.md", "THIRD_PARTY_NOTICES.md"],
+    "files": ["desktop.cjs", "updater.cjs", "window-lifecycle.cjs", "packaging/app-icon.ico", "packaging/maintenance-runner.ps1", "preload.cjs", "server.mjs", "core.mjs", "portable.cjs", "agent.mjs", "storage.mjs", "task-maintenance.mjs", "bundled-models.mjs", "progress.mjs", "hardware.mjs", "cli.mjs", "web/**", "package.json", "使用说明.md", "THIRD_PARTY_NOTICES.md"],
     "win": { "target": "dir", "icon": "packaging/app-icon.ico" },
     "directories": { "output": "release" }
   }

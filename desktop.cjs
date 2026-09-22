@@ -1,14 +1,15 @@
-const {app,BrowserWindow,ipcMain,dialog,shell}=require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell,Tray,Menu}=require('electron');
 const path=require('node:path');
 const fs=require('node:fs');
 const {spawn}=require('node:child_process');
 const {bundleRoot,workspaceRoot,installed}=require('./portable.cjs');
 const {createUpdater,RELEASES}=require('./updater.cjs');
+const {createWindowLifecycle}=require('./window-lifecycle.cjs');
 const smoke=process.argv.includes('--smoke-test');
 if(smoke&&!process.env.MINERU_DESK_DATA)process.env.MINERU_DESK_DATA=path.join(__dirname,'test-output','smoke-data');
 const dataRoot=process.env.MINERU_DESK_DATA||(workspaceRoot?path.join(workspaceRoot,'data'):path.join(process.env.LOCALAPPDATA||app.getPath('appData'),'MinerU-Desk'));
 if(bundleRoot)app.setPath('userData',path.join(dataRoot,'desktop'));
-let win,connection;
+let win,connection,lifecycle;
 let maintaining=false;
 async function serviceRequest(route,body){
  const response=await fetch(`http://127.0.0.1:${connection.port}/api/${route}`,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+connection.token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
@@ -44,7 +45,8 @@ async function maintain(operation){
   app.quit();return {started:true};
  }catch(e){maintaining=false;win.setEnabled(true);connection=await ensureService();await win.loadURL(`http://127.0.0.1:${connection.port}/#token=${connection.token}`);throw e;}
 }
-ipcMain.handle('system-info',event=>{trusted(event);return {version:require('./package.json').version,installed:!!(installed&&bundleRoot&&fs.existsSync(path.join(bundleRoot,'unins000.exe'))),releaseUrl:RELEASES,update:updater.snapshot()};});
+ipcMain.handle('system-info',event=>{trusted(event);return {version:require('./package.json').version,installed:!!(installed&&bundleRoot&&fs.existsSync(path.join(bundleRoot,'unins000.exe'))),releaseUrl:RELEASES,update:updater.snapshot(),window:lifecycle?.snapshot()};});
+ipcMain.handle('window-configure',event=>{trusted(event);return lifecycle?.configure();});
 ipcMain.handle('update-check',event=>{trusted(event);return updater.check();});
 ipcMain.handle('update-download',event=>{trusted(event);requireInstalled();if(maintaining)throw Error('正在维护程序');return updater.download();});
 ipcMain.handle('update-cancel',event=>{trusted(event);updater.cancel();return {ok:true};});
@@ -57,8 +59,13 @@ async function createWindow(){
  win=new BrowserWindow({title:'MinerU Desk',icon:path.join(__dirname,'web/app-icon.png'),width:1440,height:930,minWidth:1120,minHeight:720,show:!smoke,backgroundColor:'#f7f8fa',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
  win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//.test(url))void shell.openExternal(url);return {action:'deny'};});
  win.webContents.on('will-navigate',(event,url)=>{if(new URL(url).origin!==`http://127.0.0.1:${connection.port}`)event.preventDefault();});
- win.webContents.on('will-prevent-unload',event=>{const choice=dialog.showMessageBoxSync(win,{type:'question',buttons:['继续编辑','放弃修改并关闭'],defaultId:0,cancelId:0,message:'有尚未保存的 Markdown 修改。'});if(choice===1)event.preventDefault();});
+ win.webContents.on('will-prevent-unload',event=>{if(lifecycle?.canUnload()){event.preventDefault();return;}const choice=dialog.showMessageBoxSync(win,{type:'question',buttons:['继续编辑','放弃修改并关闭'],defaultId:0,cancelId:0,message:'有尚未保存的 Markdown、设置或 Token。'});if(choice===1)event.preventDefault();});
  await win.loadURL(`http://127.0.0.1:${connection.port}/#token=${connection.token}`);
+ if(!smoke)lifecycle=createWindowLifecycle({app,win,Tray,Menu,dialog,icon:path.join(__dirname,'packaging/app-icon.ico'),preferencesFile:path.join(dataRoot,'window-preferences.json'),
+  hasUnsaved:()=>win.webContents.executeJavaScript('Boolean(window.__mineruUnsaved?.())'),isMaintaining:()=>maintaining,
+  isBusy:async()=>{if(['checking','downloading'].includes(updater.snapshot().status))return true;const state=await serviceRequest('state');const services=await serviceRequest('services');return state.tasks.some(t=>['queued','running'].includes(t.status))||state.modelsJob?.status==='running'||services.some(s=>s.status==='running');},
+  stopBackend:async()=>{await serviceRequest('shutdown',{});}
+ });
  if(smoke){
   const output=process.env.MINERU_DESK_SMOKE_OUTPUT||path.join(__dirname,'test-output');
   fs.mkdirSync(output,{recursive:true});
@@ -90,5 +97,5 @@ ipcMain.handle('pick-directory',async()=>{const r=await dialog.showOpenDialog(wi
 ipcMain.handle('pick-executable',async()=>{const r=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'可执行文件',extensions:['exe']}]});return r.canceled?null:r.filePaths[0];});
 ipcMain.handle('open-path',async(_e,p)=>{if(typeof p!=='string'||!path.isAbsolute(p))throw Error('请选择本地路径');return shell.openPath(p);});
 ipcMain.handle('external',async(_e,url)=>{if(!/^https:\/\/(mineru.net|github.com|opendatalab.github.io|www.python.org)(\/|$)/.test(url)&&!/^http:\/\/127\.0\.0\.1:\d+(\/|$)/.test(url))throw Error('无效的帮助链接');return shell.openExternal(url);});
-if(!app.requestSingleInstanceLock()&&!smoke)app.quit();else {app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus();}});app.whenReady().then(createWindow).catch(e=>{dialog.showErrorBox('MinerU Desk 启动失败',e.stack||e.message);app.exit(1);});}
+if(!app.requestSingleInstanceLock()&&!smoke)app.quit();else {app.on('second-instance',()=>{if(lifecycle)lifecycle.show();else if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});app.on('activate',()=>lifecycle?.show());app.whenReady().then(createWindow).catch(e=>{dialog.showErrorBox('MinerU Desk 启动失败',e.stack||e.message);app.exit(1);});}
 app.on('window-all-closed',()=>app.quit());
