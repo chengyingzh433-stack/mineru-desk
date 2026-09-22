@@ -1,4 +1,4 @@
-MinerU Desk 0.3.2 · 本体与 CPU 运行依赖
+MinerU Desk 0.3.3 · 本体与 CPU 运行依赖
 
 这是非官方 Windows x64 桌面封装，内置 MinerU 与 CPU 运行环境。无需另外安装 Python。未包含 Pipeline/VLM 大模型，安装后可在界面选择模型保存地址并一键下载，也可导入已有模型。
 

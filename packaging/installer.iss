@@ -2,7 +2,7 @@
 [Setup]
 AppId={{94D99D1B-5058-512F-B4C8-969684CC6451}
 AppName=MinerU Desk
-AppVersion=0.3.2
+AppVersion=0.3.3
 SetupIconFile=app-icon.ico
 AppPublisher=MinerU Desk community package
 DefaultDirName={localappdata}\Programs\MinerU Desk
@@ -14,7 +14,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.19041
 OutputDir=..\release-installer
-OutputBaseFilename=MinerU-Desk-Setup-0.3.2-x64
+OutputBaseFilename=MinerU-Desk-Setup-0.3.3-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
