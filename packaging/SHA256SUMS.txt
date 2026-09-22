@@ -1,1 +1,1 @@
-9bc9324e0b1341b51fe7df04eeba21f4edbea6d0ac4395c72207fe2359487083  MinerU-Desk-Setup-0.3.1-x64.exe
+a0f9d250af7c8c573f1b9dcf69eb41a4c44cd887db63c7274d515f2a33d5c87c  MinerU-Desk-Setup-0.3.2-x64.exe

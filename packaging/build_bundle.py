@@ -72,6 +72,7 @@ packaging_source.mkdir()
 for name in [
     'build_bundle.py', 'finalize_bundle.py', 'create-manifest.mjs',
     'make_fixtures.py', 'fasttext-load-model.py.txt', 'Codex.ps1', 'Launch.vbs',
+    'maintenance-runner.ps1', 'installation-check.ps1', 'build-icon.cjs', 'app-icon.ico',
     'installer-config.json', 'installer-marker.json', 'installer.iss',
     'installer.nsh', '安装前说明.txt', '安装使用说明.md',
     '安装版Codex接入.md', '第三方组件说明.md', '构建安装包.md',

@@ -1,1 +1,1 @@
-{"schema":1,"name":"MinerU Desk","version":"0.3.1","distribution":"installer","platform":"win32-x64","runtime":"CPython 3.12.10 / MinerU 3.4.5 / PyTorch 2.8.0+cpu","modelsIncluded":false,"patches":["FastText Windows Unicode model path"]}
+{"schema":1,"name":"MinerU Desk","version":"0.3.2","distribution":"installer","platform":"win32-x64","runtime":"CPython 3.12.10 / MinerU 3.4.5 / PyTorch 2.8.0+cpu","modelsIncluded":false,"patches":["FastText Windows Unicode model path"]}
